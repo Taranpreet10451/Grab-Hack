@@ -7,7 +7,8 @@ Credit ClearView is an advanced, AI-powered credit risk assessment tool specific
 - **AI-Powered Predictions**: Leverages a simulated Deep Neural Network via Google's Gemini model to provide nuanced credit score predictions (Excellent, Good, Fair, Poor, Very Poor).
 - **Explainable AI (XAI)**: For each prediction, the system generates a human-readable explanation, detailing the key factors that influenced the outcome.
 - **Single Prediction Mode**: An interactive form allows for on-demand credit assessment of a single individual by inputting various data points.
-- **Batch Prediction Mode**: Supports bulk processing by uploading a CSV file of partner data, returning a table of predictions for all valid records.
+- **What-If Analysis**: An interactive tool that allows users to adjust key financial variables (like savings rate or income) and see the immediate impact on the predicted credit score.
+- **Feature Explorer**: An educational tool that provides AI-powered explanations for each feature in the credit model, explaining its relevance and impact.
 - **Dynamic & Responsive UI**: Built with Next.js, Shadcn/UI, and Tailwind CSS for a modern, clean, and responsive user experience on all devices.
 - **Simulated Model Retraining**: A feature to simulate the process of retraining the AI model, demonstrating a complete MLOps lifecycle.
 
