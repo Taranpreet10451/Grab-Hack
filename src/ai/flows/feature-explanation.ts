@@ -28,8 +28,16 @@ const featureExplanationPrompt = ai.definePrompt({
   name: 'featureExplanationPrompt',
   input: {schema: FeatureExplanationInputSchema},
   output: {schema: FeatureExplanationOutputSchema},
-  prompt: `You are a credit scoring expert. Provide a concise explanation of the feature "{{featureName}}" and how it might affect a person's credit score prediction. Be brief and to the point.
+  prompt: `You are a credit scoring expert designing a model for the gig economy. The user wants to understand a specific feature from your model.
+
+Feature Name: "{{featureName}}"
+
+Please provide a concise, 1-2 sentence explanation for this feature. Your explanation should cover:
+1.  What the feature represents in the context of a gig economy worker (e.g., driver, merchant).
+2.  Why it is relevant for assessing credit risk.
+3.  For numeric features, mention whether a higher or lower value is generally better.
 `,
+  model: 'googleai/gemini-1.5-flash-latest',
 });
 
 const featureExplanationFlow = ai.defineFlow(

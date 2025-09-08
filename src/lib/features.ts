@@ -353,3 +353,5 @@ export const featureGroups = [
   'Trip & Order History',
   'Platform Engagement',
 ];
+
+export const CSV_TEMPLATE_HEADERS = FEATURES.map(f => f.name).join(',');

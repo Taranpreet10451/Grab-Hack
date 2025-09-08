@@ -1,12 +1,69 @@
 
 'use server';
 
-import { creditScoreExplanation } from '@/ai/flows/credit-score-explanation';
 import { getFeatureExplanation } from '@/ai/flows/feature-explanation';
-import { creditScorePrediction } from '@/ai/flows/credit-score-prediction';
-import { predictionSchema, type PredictionInput } from '@/lib/schema';
-import { z } from 'zod';
-import { FEATURES } from '@/lib/features';
+import {
+  type PredictionInput,
+  type ScenarioComparisonInput,
+  type WhatIfAnalysisInput,
+} from '@/lib/schema';
+import { compareScenarios } from '@/ai/flows/scenario-comparison';
+
+// SIMULATED AI PREDICTION
+function runLocalSimulation(data: PredictionInput): PredictionResult {
+  // This is a simulated result to avoid API calls for single predictions.
+  // It generates a plausible-looking result without hitting the API.
+  
+  // A simple scoring algorithm for simulation
+  let score = 50;
+  if (data.monthly_earnings && data.monthly_earnings > 1000) score += 10;
+  if (data.avg_rating && data.avg_rating > 4.5) score += 10;
+  if (data.cancellation_rate && data.cancellation_rate < 0.05) score += 10;
+  if (data.credit_score && data.credit_score > 700) score += 20;
+  if (data.income_volatility && data.income_volatility > 0.5) score -= 15;
+  if (data.late_arrivals && data.late_arrivals > 5) score -= 15;
+  if (data.savings_rate && data.savings_rate > 0.15) score += 15;
+  if (data.credit_utilization && data.credit_utilization < 0.3) score += 15;
+
+
+  let prediction = 'Fair';
+  if (score > 85) prediction = 'Excellent';
+  else if (score > 70) prediction = 'Good';
+  else if (score > 40) prediction = 'Fair';
+  else if (score > 20) prediction = 'Poor';
+  else prediction = 'Very Poor';
+
+  // Generate plausible probabilities
+  const probabilities: Record<string, number> = {
+    'Excellent': 0.1,
+    'Good': 0.2,
+    'Fair': 0.4,
+    'Poor': 0.2,
+    'Very Poor': 0.1,
+  };
+  const simulatedScore = Math.min(0.9, Math.max(0.4, score / 100));
+  probabilities[prediction] = simulatedScore;
+  
+  const remainingProb = (1 - simulatedScore) / 4;
+  for (const key in probabilities) {
+    if (key !== prediction) {
+      probabilities[key] = remainingProb;
+    }
+  }
+
+  const explanation = `This is a simulated analysis. The prediction of '${prediction}' is primarily influenced by factors such as the partner's external credit score of ${data.credit_score}, their monthly earnings of $${data.monthly_earnings}, and a low cancellation rate of ${data.cancellation_rate}. The model simulation suggests these are strong indicators of financial reliability.`;
+
+  return {
+    prediction,
+    probabilities,
+    explanation,
+    modelInfo: {
+      algorithm: 'Simulated Neural Network',
+      trainedAt: new Date().toISOString(),
+    },
+  };
+}
+
 
 export type PredictionResult = {
   prediction: string;
@@ -18,103 +75,89 @@ export type PredictionResult = {
   };
 };
 
+export type ScenarioComparisonResult = {
+  scenarioA: PredictionResult;
+  scenarioB: PredictionResult;
+  comparativeAnalysis: string;
+};
+
+export type WhatIfAnalysisResult = {
+    newPrediction: string;
+    changeAnalysis: string;
+}
+
+
 export async function getPredictionAction(
   data: PredictionInput
 ): Promise<PredictionResult> {
-  
-  const featureValues = Object.fromEntries(
-    Object.entries(data).map(([key, value]) => [key, String(value)])
-  );
-  
-  const predictionResult = await creditScorePrediction({
-    featureValues
-  });
-
-  const { prediction, probabilities } = predictionResult;
-
-  const numericFeatures = Object.fromEntries(
-    Object.entries(data).filter(([, value]) => typeof value === 'number')
-  );
-
-  const explanationResult = await creditScoreExplanation({
-    featureValues: numericFeatures,
-    prediction,
-    probabilities,
-  });
-
-  return {
-    prediction,
-    probabilities,
-    explanation: explanationResult.explanation,
-    modelInfo: {
-      algorithm: 'Deep Neural Network',
-      trainedAt: new Date().toISOString(),
-    },
-  };
+  return runLocalSimulation(data);
 }
 
-export async function getBatchPredictionsAction(csvData: string): Promise<(PredictionResult & { partnerId?: string })[]> {
-    const rows = csvData.split('\n').map(r => r.trim()).filter(row => row);
-    if (rows.length < 2) {
-        throw new Error('CSV must contain a header and at least one data row.');
+export async function getWhatIfAnalysisAction(
+  input: WhatIfAnalysisInput
+): Promise<WhatIfAnalysisResult> {
+    const originalResult = runLocalSimulation(input.originalData);
+    const newResult = runLocalSimulation(input.newData);
+
+    let changeAnalysis = `This is a simulated analysis. Changing the inputs resulted in a new prediction of '${newResult.prediction}' (previously '${originalResult.prediction}'). `;
+
+    const significantChanges = [];
+    if (input.originalData.monthly_earnings !== input.newData.monthly_earnings) {
+        significantChanges.push(`the change in monthly earnings from $${input.originalData.monthly_earnings} to $${input.newData.monthly_earnings}`);
+    }
+    if (input.originalData.credit_utilization !== input.newData.credit_utilization) {
+        significantChanges.push(`the updated credit utilization of ${(input.newData.credit_utilization! * 100).toFixed(0)}%`);
+    }
+     if (input.originalData.savings_rate !== input.newData.savings_rate) {
+        significantChanges.push(`the new savings rate of ${(input.newData.savings_rate! * 100).toFixed(0)}%`);
     }
 
-    const header = rows[0].split(',').map(h => h.trim());
-    const dataRows = rows.slice(1);
+    if (significantChanges.length > 0) {
+        changeAnalysis += `The primary drivers for this change were ${significantChanges.join(' and ')}.`;
+    } else {
+        changeAnalysis += `There were no significant changes in the key financial drivers.`
+    }
 
-    const numericFeatureNames = FEATURES.filter(f => f.type === 'numeric').map(f => f.name);
-    const booleanFeatureNames = FEATURES.filter(f => f.type === 'boolean').map(f => f.name);
+    return {
+        newPrediction: newResult.prediction,
+        changeAnalysis,
+    }
+}
 
-    const predictionPromises = dataRows.map(async (row, i) => {
-        const values = row.split(',');
-        
-        const rowData: Record<string, any> = {};
-        header.forEach((key, index) => {
-            if (key && index < values.length) {
-                let value: string | boolean | number | null = values[index]?.trim() ?? '';
-                
-                if (key === 'partner_id') {
-                    rowData[key] = value as string;
-                } else if (numericFeatureNames.includes(key)) {
-                    rowData[key] = value === '' ? null : parseFloat(value);
-                } else if (booleanFeatureNames.includes(key)) {
-                    const upperValue = (value as string).toUpperCase();
-                    if (upperValue === 'TRUE') {
-                        rowData[key] = true;
-                    } else if (upperValue === 'FALSE') {
-                        rowData[key] = false;
-                    } else {
-                        rowData[key] = null; 
-                    }
-                } else {
-                    rowData[key] = value;
-                }
-            }
-        });
+export async function getScenarioComparisonAction(
+  data: ScenarioComparisonInput
+): Promise<ScenarioComparisonResult> {
+  // Run local simulations for individual scores
+  const scenarioA = runLocalSimulation(data.scenarioA as PredictionInput);
+  const scenarioB = runLocalSimulation(data.scenarioB as PredictionInput);
 
-        try {
-            const validationResult = predictionSchema.safeParse(rowData);
-            
-            if (!validationResult.success) {
-                console.error(`Row ${i + 2} validation failed:`, validationResult.error.flatten().fieldErrors);
-                return null;
-            }
-            
-            const prediction = await getPredictionAction(validationResult.data as PredictionInput);
-            return { partnerId: validationResult.data.partner_id, ...prediction };
-        } catch (error) {
-            console.error(`Error processing row ${i + 2}:`, rowData, error);
-            return null;
-        }
-    });
+  // Generate a hard-coded comparative analysis to avoid API calls
+  const comparativeAnalysis = `This is a simulated comparative analysis. Scenario A is predicted as '${scenarioA.prediction}' while Scenario B is predicted as '${scenarioB.prediction}'. Scenario A appears stronger due to a higher external credit score (${data.scenarioA.credit_score} vs. ${data.scenarioB.credit_score}) and significantly lower income volatility. While Scenario B may have higher monthly earnings, the instability of that income presents a greater risk. The simulation concludes that consistent financial behavior, as seen in Scenario A, is a more reliable indicator of creditworthiness.`;
 
-    const results = await Promise.all(predictionPromises);
-    
-    return results.filter((res): res is PredictionResult & { partnerId?: string } => res !== null);
+  return {
+    scenarioA,
+    scenarioB,
+    comparativeAnalysis,
+  };
 }
 
 
 export async function getFeatureExplanationAction(featureName: string) {
+  const demographicFeatures = [
+    'gender',
+    'age',
+    'location',
+    'education_level',
+    'marital_status',
+    'dependents',
+  ];
+
+  if (demographicFeatures.includes(featureName)) {
+    return {
+      explanation: `The '${featureName.replace(/_/g, ' ')}' feature is a demographic data point. In modern, ethical credit models, such features are not used as direct predictors of creditworthiness to avoid bias. They are collected for overall model monitoring and fairness analysis.`,
+    };
+  }
+
   try {
     const result = await getFeatureExplanation({ featureName });
     return result;

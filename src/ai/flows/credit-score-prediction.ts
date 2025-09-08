@@ -1,4 +1,3 @@
-// This file is machine-generated - edit at your own risk!
 
 'use server';
 
@@ -29,6 +28,7 @@ const CreditScorePredictionOutputSchema = z.object({
       'Very Poor': z.number().describe('Probability of Very Poor score'),
     })
     .describe('A map of credit score categories to their predicted probabilities.'),
+  explanation: z.string().describe('A concise (1-2 sentence) explanation for the prediction, highlighting the key influencing factors.'),
 });
 export type CreditScorePredictionOutput = z.infer<typeof CreditScorePredictionOutputSchema>;
 
@@ -40,7 +40,8 @@ const creditScorePredictionPrompt = ai.definePrompt({
   name: 'creditScorePredictionPrompt',
   input: {schema: CreditScorePredictionInputSchema},
   output: {schema: CreditScorePredictionOutputSchema},
-  prompt: `You are a highly sophisticated, fine-tuned deep learning model for credit risk assessment, achieving 98.5% accuracy. Your task is to predict a credit score category by analyzing complex non-linear relationships and feature interactions in the data.
+  model: 'googleai/gemini-1.5-pro-latest',
+  prompt: `You are a highly sophisticated, fine-tuned deep learning model for credit risk assessment, achieving 98.5% accuracy. Your task is to predict a credit score category and provide a brief explanation by analyzing complex non-linear relationships and feature interactions in the data.
 
   The possible credit score categories are: "Excellent", "Good", "Fair", "Poor", and "Very Poor".
 
@@ -51,7 +52,7 @@ const creditScorePredictionPrompt = ai.definePrompt({
 
   Your architecture allows you to capture very subtle patterns. For example, you understand that the interaction between 'income_volatility' and 'credit_utilization' is a critical negative indicator, especially when combined with a low 'savings_rate'. Conversely, high 'platform_efficiency' and a high 'avg_rating' are strong positive indicators that can offset moderate financial risks.
 
-  Output the predicted category and the probabilities for each category. The probabilities must be a valid distribution (summing to 1.0).
+  Output the predicted category, the probabilities for each category (summing to 1.0), and a concise (1-2 sentence) explanation for the prediction, highlighting the key influencing factors.
   `,
 });
 

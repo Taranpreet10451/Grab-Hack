@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -23,13 +24,14 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FEATURES, featureGroups } from '@/lib/features';
 import { predictionSchema, type PredictionInput } from '@/lib/schema';
-import { getPredictionAction, type PredictionResult } from '@/app/actions';
 import { Loader2, Zap } from 'lucide-react';
 import { FeatureExplanation } from './feature-explanation';
+import React from 'react';
 
 type PredictionFormProps = {
-  onPredict: (result: PredictionResult) => void;
-  onLoading: (loading: boolean) => void;
+  onSubmit: (data: PredictionInput) => Promise<void>;
+  onClear: () => void;
+  submitButtonText?: string;
 };
 
 const getRandomValue = (min: number, max: number, precision: number = 0) => {
@@ -37,7 +39,7 @@ const getRandomValue = (min: number, max: number, precision: number = 0) => {
   return parseFloat(random.toFixed(precision));
 };
 
-export function PredictionForm({ onPredict, onLoading }: PredictionFormProps) {
+export function PredictionForm({ onSubmit, onClear, submitButtonText = "Get Score / Analysis" }: PredictionFormProps) {
   const defaultValues = FEATURES.reduce((acc, feature) => {
     acc[feature.name] = feature.defaultValue;
     return acc;
@@ -180,33 +182,16 @@ export function PredictionForm({ onPredict, onLoading }: PredictionFormProps) {
       }
     });
     form.reset(randomData);
-    onLoading(false);
-    onPredict({
-      prediction: '',
-      probabilities: {},
-      explanation: '',
-      modelInfo: {
-        algorithm: 'Simulated RandomForestClassifier',
-        trainedAt: new Date('2024-05-20T10:00:00Z').toISOString(),
-      },
-    });
+    onClear();
   };
 
-  const onSubmit = async (data: PredictionInput) => {
-    onLoading(true);
-    try {
-      const result = await getPredictionAction(data);
-      onPredict(result);
-    } catch (error) {
-      console.error('Prediction failed:', error);
-    } finally {
-      onLoading(false);
-    }
-  };
+  const handleFormSubmit = form.handleSubmit(async (data: PredictionInput) => {
+    await onSubmit(data);
+  });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Partner Features</CardTitle>
@@ -287,7 +272,7 @@ export function PredictionForm({ onPredict, onLoading }: PredictionFormProps) {
           </Button>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Get Prediction
+            {submitButtonText}
           </Button>
         </div>
       </form>
